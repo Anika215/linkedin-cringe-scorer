@@ -36,6 +36,39 @@ Return ONLY a JSON object in this exact format, no markdown, no explanation outs
   "rewrite": "<a rewritten version of the post that says the same thing but like a normal person>"
 }`;
 
+const SAMPLE_RESPONSE = JSON.stringify({
+  score: 74,
+  verdict:
+    "A masterclass in performing humility while aggressively flexing. LinkedIn would be proud.",
+  flags: [
+    {
+      type: "humblebrag",
+      quote: "I almost didn't share this",
+      explanation:
+        "You definitely drafted this three times before posting it.",
+    },
+    {
+      type: "unnecessary_story",
+      quote: "A stranger in the elevator changed my life",
+      explanation:
+        "No one has ever learned anything meaningful in a 30-second elevator ride.",
+    },
+    {
+      type: "engagement_bait",
+      quote: "What's one lesson that changed your career?",
+      explanation:
+        "Fishing for comments with a question you don't actually care about.",
+    },
+    {
+      type: "corporate_inspiration",
+      quote: "Success is a mindset, not a destination",
+      explanation: "Inspirational fridge magnet energy.",
+    },
+  ],
+  rewrite:
+    "Got promoted last month. Been thinking a lot about what actually helped — probably just showing up consistently and asking for feedback early. Anyway, congrats to the team.",
+});
+
 export async function POST(request: Request) {
   const { post } = await request.json();
 
@@ -43,6 +76,26 @@ export async function POST(request: Request) {
     return new Response(JSON.stringify({ error: "Post content is required" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    const encoder = new TextEncoder();
+    const sampleStream = new ReadableStream({
+      async start(controller) {
+        for (const char of SAMPLE_RESPONSE) {
+          controller.enqueue(encoder.encode(char));
+          await new Promise((r) => setTimeout(r, 8));
+        }
+        controller.close();
+      },
+    });
+    return new Response(sampleStream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Transfer-Encoding": "chunked",
+        "X-Content-Type-Options": "nosniff",
+      },
     });
   }
 
